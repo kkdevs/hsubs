@@ -15,7 +15,7 @@ using Logger = BepInEx.Logger;
 
 namespace HSubs
 {
-	[BepInPlugin("org.bepinex.kk.hsubs", "HSubs", "1.0")]
+	[BepInPlugin("org.bepinex.kk.hsubs", "HSubs", "3.0")]
 	public class HSubs : BaseUnityPlugin
 	{
 		private const string SHEET_KEY = "1U0pRyY8e2fIg0E4iBXXRIzpGGDBs5W_g9KfjObS-xI0";
@@ -111,12 +111,16 @@ namespace HSubs
 		[HarmonyPatch(typeof(LoadAudioBase), "Play")]
 		public static void CatchVoice(LoadAudioBase __instance)
 		{
-			LoadAudioBase v = __instance;
-			AudioSource audioSource = v.audioSource;
-			if (audioSource == null || audioSource.clip == null || v.audioSource.loop)
+			AudioSource audioSource = __instance.audioSource;
+			if (audioSource == null || audioSource.clip == null || audioSource.loop)
 				return;
-
-			ShowSubtitle?.Invoke(audioSource);
+			try
+			{
+				ShowSubtitle?.Invoke(audioSource);
+			} catch (Exception ex)
+			{
+				Logger.Log(LogLevel.Error, ex);
+			}
 		}
 
 		protected IEnumerable<IEnumerable<string>> ParseCSV(string source)
@@ -185,18 +189,14 @@ namespace HSubs
 				StopCoroutine(showRoutine);
 
 			Logger.Log(LogLevel.Info, $"{source.name} => {sub}");
-
-			showRoutine = StartCoroutine(Show_Coroutine(source, sub));
+			float expire = source.clip.length / Mathf.Abs(source.pitch);
+			showRoutine = StartCoroutine(Show_Coroutine(expire, sub));
 		}
 
-		private IEnumerator Show_Coroutine(AudioSource source, string subtitle)
+		private IEnumerator Show_Coroutine(float expire, string subtitle)
 		{
 			currentLine = subtitle;
-			while (!source.isPlaying)
-				yield return new WaitForFixedUpdate();
-
-			while (source.isPlaying)
-				yield return new WaitForFixedUpdate();
+			yield return new WaitForSeconds(expire);
 			currentLine = string.Empty;
 		}
 
