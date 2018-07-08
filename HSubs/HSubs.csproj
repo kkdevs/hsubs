@@ -54,6 +54,9 @@
     <Reference Include="UnityEngine.Networking">
       <HintPath>..\..\..\..\bpl\UnityEngine.Networking.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\..\..\Patchwork\Managed\UnityEngine.UI.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HSubs.cs" />
