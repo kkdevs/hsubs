@@ -45,7 +45,7 @@ namespace HSubs
 			oldRenderer = new ConfigWrapper<bool>("old-renderer", this, false);
 			fontSize = new ConfigWrapper<int>("font-size", this, 20);
 			outlineThickness = new ConfigWrapper<float>("outline-thickness", this, 1f);
-			textAlignment = new ConfigWrapper<TextAnchor>("text-alignment", this, TextAnchor.UpperCenter);
+			textAlignment = new ConfigWrapper<TextAnchor>("text-alignment", this, TextAnchor.LowerCenter);
 			fontStyle = new ConfigWrapper<FontStyle>("font-style", this, FontStyle.Bold);
 			textOffset = new ConfigWrapper<float[]>("text-offset", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f });
 			outlineColor = new ConfigWrapper<float[]>("outline-color", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f, 0.0f, 1.0f });
@@ -237,7 +237,7 @@ namespace HSubs
             subtitleText.fontSize = fontSize.Value;
             subtitleText.fontStyle = fontStyle.Value;
             subtitleText.material.color = new Color(textColorArray[0], textColorArray[1], textColorArray[2], textColorArray[3]);
-            subtitleText.alignment = TextAnchor.UpperCenter;
+            subtitleText.alignment = textAlignment.Value;
             subtitleText.rectTransform.anchoredPosition = new Vector2(offsetArray[0], offsetArray[1]);
         }
 
