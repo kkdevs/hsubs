@@ -10,6 +10,7 @@ using BepInEx.Logging;
 using Harmony;
 using MessagePack;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Logger = BepInEx.Logger;
 
@@ -29,7 +30,6 @@ namespace HSubs
 		private ConfigWrapper<float[]> textOffset;
 		private ConfigWrapper<bool> oldRenderer;
 
-		private Outline outline;
 		private GameObject panel;
 		private Coroutine showRoutine;
 		private Dictionary<string, string> subtitlesDict = new Dictionary<string, string>();
@@ -43,11 +43,11 @@ namespace HSubs
 			string ArrToStr(float[] arr) => string.Join(";", arr.Select(f => f.ToString("0.0")).ToArray());
 
 			oldRenderer = new ConfigWrapper<bool>("old-renderer", this, false);
-			fontSize = new ConfigWrapper<int>("font-size", this, 20);
+			fontSize = new ConfigWrapper<int>("font-size", this, 32);
 			outlineThickness = new ConfigWrapper<float>("outline-thickness", this, 1f);
 			textAlignment = new ConfigWrapper<TextAnchor>("text-alignment", this, TextAnchor.LowerCenter);
 			fontStyle = new ConfigWrapper<FontStyle>("font-style", this, FontStyle.Bold);
-			textOffset = new ConfigWrapper<float[]>("text-offset", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f });
+			textOffset = new ConfigWrapper<float[]>("text-offset", this, StrToArr, ArrToStr, new[] { 0.0f, 16.0f });
 			outlineColor = new ConfigWrapper<float[]>("outline-color", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f, 0.0f, 1.0f });
 			textColor = new ConfigWrapper<float[]>("text-color", this, StrToArr, ArrToStr, new[] { 1.0f, 1.0f, 1.0f, 1.0f });
 
@@ -55,6 +55,10 @@ namespace HSubs
 			InitGUI();
 			ShowSubtitle = Show;
 			StartCoroutine(DownloadSubs());
+			SceneManager.sceneLoaded += (o, e) =>
+			{
+				currentLine = string.Empty;
+			};
 		}
 
 		public IEnumerator DownloadSubs()
@@ -203,28 +207,30 @@ namespace HSubs
         private void InitGUI()
         {
 			if (oldRenderer.Value) return;
-            panel = new GameObject("Panel");
-            DontDestroyOnLoad(panel);
 
-            var canvas = panel.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+			panel = new GameObject("HSubs");
+			DontDestroyOnLoad(panel);
+			var canvas = panel.AddComponent<Canvas>();
 
-            var rect = panel.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(0f, 0f);
-            rect.anchorMin = new Vector2(0f, 0f);
-            rect.anchorMax = new Vector2(1f, 1f);
+			canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+			canvas.overrideSorting = true;
+			canvas.sortingOrder = 1;
+			var content = new GameObject("HSubsContent");
+			content.transform.SetParent(panel.transform, true);
+			var rect = content.AddComponent<RectTransform>();
+			rect.sizeDelta = new Vector2(0f, 0f);
+			rect.anchorMin = new Vector2(0f, 0f);
+			rect.anchorMax = new Vector2(1f, 1f);
+			rect.pivot = new Vector2(0, 0);
 
-            outline = panel.AddComponent<Outline>();
-
-            subtitleText = panel.AddComponent<Text>();
-            subtitleText.transform.SetParent(panel.transform, false);
-            subtitleText.transform.localPosition = new Vector3(0f, 0f, 10f);
+			subtitleText = content.AddComponent<Text>();
+			subtitleText.transform.SetParent(panel.transform, false);
             var myFont = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
             subtitleText.font = myFont;
             subtitleText.material = myFont.material;
             subtitleText.text = string.Empty;
 
-            outline.enabled = true;
+			var outline = content.AddComponent<Outline>();
             float thickness = outlineThickness.Value;
             outline.effectDistance = new Vector2(thickness, thickness);
 
