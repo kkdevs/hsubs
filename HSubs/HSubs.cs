@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using BepInEx;
-using BepInEx.Common;
 using BepInEx.Logging;
 using Harmony;
 using MessagePack;
@@ -59,7 +58,7 @@ namespace HSubs
 
 		public IEnumerator DownloadSubs()
 		{
-			string cache = Path.Combine(Utility.PluginsDirectory, "hsubs.msgpack");
+			string cache = Path.Combine(Paths.PluginPath, "hsubs.msgpack");
 			if (File.Exists(cache))
 			{
 				subtitlesDict = LZ4MessagePackSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllBytes(cache));
