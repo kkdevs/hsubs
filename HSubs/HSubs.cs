@@ -1,11 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
 using BepInEx;
-using BepInEx.Common;
 using BepInEx.Logging;
 using Harmony;
 using MessagePack;
@@ -20,16 +20,25 @@ namespace HSubs
 	{
 		private const string SHEET_KEY = "1U0pRyY8e2fIg0E4iBXXRIzpGGDBs5W_g9KfjObS-xI0";
 
-		private ConfigWrapper<int> fontSize;
-		private ConfigWrapper<FontStyle> fontStyle;
-		private ConfigWrapper<float> outlineThickness;
-		private ConfigWrapper<TextAnchor> textAlignment;
-		private ConfigWrapper<float[]> outlineColor;
-		private ConfigWrapper<float[]> textColor;
-		private ConfigWrapper<float[]> textOffset;
-		private ConfigWrapper<bool> oldRenderer;
+        [DisplayName("!Font size")]
+		private ConfigWrapper<int> fontSize { get; }
+	    [DisplayName("!Font style")]
+        private ConfigWrapper<FontStyle> fontStyle { get; }
+	    [DisplayName("!Outline thickness")]
+        private ConfigWrapper<float> outlineThickness { get; }
+	    [DisplayName("!Text alignment")]
+        private ConfigWrapper<TextAnchor> textAlignment { get; }
+	    [DisplayName("Outline color")]
+        private ConfigWrapper<float[]> outlineColor { get; }
+	    [DisplayName("Text color")]
+        private ConfigWrapper<float[]> textColor { get; }
+	    [DisplayName("Text offset")]
+        private ConfigWrapper<float[]> textOffset { get; }
+	    [DisplayName("Use old renderer")]
+        [Description("Use slower OnGUI text rendering")]
+        private ConfigWrapper<bool> oldRenderer { get; }
 
-		private Outline outline;
+        private Outline outline;
 		private GameObject panel;
 		private Coroutine showRoutine;
 		private Dictionary<string, string> subtitlesDict = new Dictionary<string, string>();
@@ -37,20 +46,37 @@ namespace HSubs
 
 		private static Action<AudioSource> ShowSubtitle { get; set; }
 
-		public void Start()
+	    public HSubs()
+	    {
+	        float[] StrToArr(string s) => s.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(float.Parse).ToArray();
+	        string ArrToStr(float[] arr) => string.Join(";", arr.Select(f => f.ToString("0.0")).ToArray());
+
+	        oldRenderer = new ConfigWrapper<bool>("old-renderer", this, false);
+	        fontSize = new ConfigWrapper<int>("font-size", this, 20);
+	        outlineThickness = new ConfigWrapper<float>("outline-thickness", this, 1f);
+	        textAlignment = new ConfigWrapper<TextAnchor>("text-alignment", this, TextAnchor.LowerCenter);
+	        fontStyle = new ConfigWrapper<FontStyle>("font-style", this, FontStyle.Bold);
+	        textOffset = new ConfigWrapper<float[]>("text-offset", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f });
+	        outlineColor = new ConfigWrapper<float[]>("outline-color", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f, 0.0f, 1.0f });
+	        textColor = new ConfigWrapper<float[]>("text-color", this, StrToArr, ArrToStr, new[] { 1.0f, 1.0f, 1.0f, 1.0f });
+
+	        oldRenderer.SettingChanged += OnSettingChanged;
+	        fontSize.SettingChanged += OnSettingChanged;
+	        outlineThickness.SettingChanged += OnSettingChanged;
+	        textAlignment.SettingChanged += OnSettingChanged;
+	        fontStyle.SettingChanged += OnSettingChanged;
+	        textOffset.SettingChanged += OnSettingChanged;
+	        outlineColor.SettingChanged += OnSettingChanged;
+	        textColor.SettingChanged += OnSettingChanged;
+        }
+
+	    private void OnSettingChanged(object sender, EventArgs args)
+	    {
+	        ReadConfig();
+	    }
+
+	    public void Start()
 		{
-			float[] StrToArr(string s) => s.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(float.Parse).ToArray();
-			string ArrToStr(float[] arr) => string.Join(";", arr.Select(f => f.ToString("0.0")).ToArray());
-
-			oldRenderer = new ConfigWrapper<bool>("old-renderer", this, false);
-			fontSize = new ConfigWrapper<int>("font-size", this, 20);
-			outlineThickness = new ConfigWrapper<float>("outline-thickness", this, 1f);
-			textAlignment = new ConfigWrapper<TextAnchor>("text-alignment", this, TextAnchor.LowerCenter);
-			fontStyle = new ConfigWrapper<FontStyle>("font-style", this, FontStyle.Bold);
-			textOffset = new ConfigWrapper<float[]>("text-offset", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f });
-			outlineColor = new ConfigWrapper<float[]>("outline-color", this, StrToArr, ArrToStr, new[] { 0.0f, 0.0f, 0.0f, 1.0f });
-			textColor = new ConfigWrapper<float[]>("text-color", this, StrToArr, ArrToStr, new[] { 1.0f, 1.0f, 1.0f, 1.0f });
-
 			HarmonyInstance.Create("org.bepinex.kk.hsubs").PatchAll(typeof(HSubs));
 			InitGUI();
 			ShowSubtitle = Show;
@@ -59,7 +85,7 @@ namespace HSubs
 
 		public IEnumerator DownloadSubs()
 		{
-			string cache = Path.Combine(Utility.PluginsDirectory, "hsubs.msgpack");
+			string cache = Path.Combine(Paths.PluginPath, "hsubs.msgpack");
 			if (File.Exists(cache))
 			{
 				subtitlesDict = LZ4MessagePackSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllBytes(cache));
@@ -202,7 +228,7 @@ namespace HSubs
 
         private void InitGUI()
         {
-			if (oldRenderer.Value) return;
+            if (oldRenderer.Value) return;
             panel = new GameObject("Panel");
             DontDestroyOnLoad(panel);
 
@@ -223,7 +249,11 @@ namespace HSubs
             subtitleText.font = myFont;
             subtitleText.material = myFont.material;
             subtitleText.text = string.Empty;
+            ReadConfig();
+        }
 
+        private void ReadConfig()
+        {
             outline.enabled = true;
             float thickness = outlineThickness.Value;
             outline.effectDistance = new Vector2(thickness, thickness);
@@ -241,7 +271,7 @@ namespace HSubs
             subtitleText.rectTransform.anchoredPosition = new Vector2(offsetArray[0], offsetArray[1]);
         }
 
-		string onguiLine;
+        string onguiLine;
 		string currentLine
 		{
 			set
